@@ -131,10 +131,11 @@ grant execute on function
   public.is_slot_aligned(timestamptz),
   public.is_valid_booking_period(tstzrange),
   public.period_slots(tstzrange),
+  public.is_single_jst_day(tstzrange),
+  public.last_bookable_date(timestamptz),
   public.pricing_config(),
   public.calc_booking_fees(integer, integer),
-  public.is_price_allowed(integer, integer),
-  public.min_price_per_30min(integer)
+  public.is_price_allowed(integer, integer)
 to anon, authenticated;
 
 -- ---------------------------------------------------------------------------

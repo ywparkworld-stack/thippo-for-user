@@ -3,7 +3,8 @@ import {
   calcBookingFees,
   CANCEL_RULES,
   isPriceAllowed,
-  minPricePer30min,
+  jstToUtc,
+  lastBookableDate,
   PRICING,
 } from '@thippo/core';
 import { describe, expect, it } from 'vitest';
@@ -22,6 +23,7 @@ describe('pricing_config', () => {
       stripe_fee_rate_basis_points: PRICING.stripeFeeRateBasisPoints,
       max_slots_per_booking: PRICING.maxSlotsPerBooking,
       max_price_per_30min: PRICING.maxPricePer30min,
+      min_price_per_30min: PRICING.minPricePer30min,
       booking_window_days: BOOKING_RULES.bookingWindowDays,
       pending_order_ttl_minutes: BOOKING_RULES.pendingOrderTtlMinutes,
       full_refund_deadline_hours: CANCEL_RULES.fullRefundDeadlineHours,
@@ -66,27 +68,41 @@ describe('calc_booking_fees', () => {
   });
 });
 
-describe('is_price_allowed / min_price_per_30min', () => {
-  it('下限の前後で packages/core と一致する', async () => {
+describe('is_price_allowed', () => {
+  it('下限（300 円）や理論上の下限（237 円）の前後で packages/core と一致する', async () => {
     const cases: [number, number][] = [];
     for (let minSlots = 1; minSlots <= 48; minSlots++) {
-      const floor = minPricePer30min(minSlots);
-      for (let p = Math.max(1, floor - 5); p <= floor + 5; p++) cases.push([p, minSlots]);
+      for (const p of [
+        1, 100, 230, 236, 237, 238, 295, 298, 299, 300, 301, 302, 1000, 1_000_000, 1_000_001,
+      ]) {
+        cases.push([p, minSlots]);
+      }
     }
     const { rows } = await adminPool.query<{ price: number; min_slots: number; allowed: boolean }>(
       `select c.price, c.min_slots, public.is_price_allowed(c.price, c.min_slots) as allowed
        from unnest($1::int[], $2::int[]) as c(price, min_slots)`,
       [cases.map((c) => c[0]), cases.map((c) => c[1])],
     );
+    expect(rows).toHaveLength(cases.length);
     for (const r of rows) expect(r.allowed).toBe(isPriceAllowed(r.price, r.min_slots));
   });
+});
 
-  it('下限の値が一致する', async () => {
-    for (const minSlots of [1, 2, 3, 4, 48]) {
-      const { rows } = await adminPool.query('select public.min_price_per_30min($1) as v', [
-        minSlots,
+describe('last_bookable_date', () => {
+  it('packages/core と一致する（Asia/Tokyo の日付で判定）', async () => {
+    const nows = [
+      jstToUtc('2026-09-25', '00:00'),
+      jstToUtc('2026-09-25', '08:59'),
+      jstToUtc('2026-09-25', '09:00'),
+      jstToUtc('2026-09-25', '23:59'),
+      jstToUtc('2026-12-31', '23:30'),
+      jstToUtc('2028-02-15', '12:00'),
+    ];
+    for (const now of nows) {
+      const { rows } = await adminPool.query(`select public.last_bookable_date($1)::text as d`, [
+        now.toISOString(),
       ]);
-      expect(rows[0].v).toBe(minPricePer30min(minSlots));
+      expect(rows[0].d).toBe(lastBookableDate(now));
     }
   });
 });

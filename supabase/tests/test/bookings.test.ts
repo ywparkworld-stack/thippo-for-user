@@ -199,14 +199,54 @@ describe('予約の CHECK 制約', () => {
   });
 });
 
-describe('スペースの料金の下限', () => {
-  it('下限未満の料金は保存できない', async () => {
+describe('スペースの料金の下限（30分 300 円）', () => {
+  it('300 円未満の料金は保存できない', async () => {
     const hostId = await createHost();
+    for (const minSlots of [1, 4]) {
+      await expectPgError(
+        createSpace(hostId, { price: 299, minSlots }),
+        '23514',
+        /spaces_price_allowed/,
+      );
+      await createSpace(hostId, { price: 300, minSlots });
+    }
+  });
+});
+
+describe('日をまたぐ予約', () => {
+  it('0:00 をまたぐ予約は作れない。24:00 に終わる予約と翌日 0:00 からの予約は別々に作れる', async () => {
+    const f = await fixture();
+    const day = f.at('00:00').slice(0, 10);
+    const next = new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    const base = f.booking(f.orderA, f.guest, '23:00', '23:30');
     await expectPgError(
-      createSpace(hostId, { price: 236, minSlots: 1 }),
+      createBooking({ ...base, start: `${day}T23:30:00+09:00`, end: `${next}T00:30:00+09:00` }),
       '23514',
-      /spaces_price_allowed/,
+      /bookings_single_day/,
     );
-    await createSpace(hostId, { price: 237, minSlots: 1 });
+    await createBooking({ ...base, start: `${day}T23:00:00+09:00`, end: `${next}T00:00:00+09:00` });
+    await createBooking({
+      ...base,
+      start: `${next}T00:00:00+09:00`,
+      end: `${next}T01:00:00+09:00`,
+    });
+  });
+
+  it('予約カゴにも日をまたぐ期間は入れられない', async () => {
+    const guest = await createUser();
+    const hostId = await createHost();
+    const spaceId = await createSpace(hostId);
+    const cart = await adminPool.query<{ id: string }>(
+      `insert into public.carts (guest_id) values ($1) returning id`,
+      [guest],
+    );
+    await expectPgError(
+      adminPool.query(
+        `insert into public.cart_items (cart_id, space_id, period) values ($1, $2, tstzrange($3, $4, '[)'))`,
+        [cart.rows[0]!.id, spaceId, '2027-03-01T23:30:00+09:00', '2027-03-02T00:30:00+09:00'],
+      ),
+      '23514',
+      /cart_items_single_day/,
+    );
   });
 });

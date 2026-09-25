@@ -18,12 +18,21 @@ export const PRICING = {
   stripeFeeRateBasisPoints: 360,
   /** 1予約あたりの最大枠数（24時間分） */
   maxSlotsPerBooking: 48,
+  /**
+   * 30分あたりの料金の下限（円）。運営の決定値。
+   * 半額キャンセルでも貸出主の手取りがマイナスにならない理論上の下限（price-floor.ts の
+   * safePriceFloorPer30min、最大 237 円）以上であることをテストで確認している。
+   */
+  minPricePer30min: 300,
   /** 30分あたりの料金の上限（円）。入力ミス防止用 */
   maxPricePer30min: 1_000_000,
 } as const;
 
 export const BOOKING_RULES = {
-  /** 予約を受け付ける期間（現在時刻からの日数） */
+  /**
+   * 予約を受け付ける期間（日付で判定）。利用日（Asia/Tokyo）が「今日 + この日数」以下なら受け付ける。
+   * 日をまたぐ予約は受け付けない（日をまたいで利用したい場合は日ごとに別々に予約する）。
+   */
   bookingWindowDays: 30,
   /** 未払いの注文を expired にするまでの時間（分） */
   pendingOrderTtlMinutes: 15,

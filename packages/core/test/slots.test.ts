@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDaySlots,
   formatJstDateTime,
+  isSingleJstDay,
   isSlotAligned,
+  isWithinBookingWindow,
+  lastBookableDate,
   jstToUtc,
   selectRange,
   toJstParts,
@@ -79,6 +82,7 @@ describe('buildDaySlots', () => {
       'available',
     ]);
 
+    // 受付期間は日付で判定する: 8/31 から見て 30日後は 9/30 なので 10/1 の枠はすべて期間外
     const far = buildDaySlots({
       date: DATE,
       rules,
@@ -86,8 +90,16 @@ describe('buildDaySlots', () => {
       busy: [],
       now: jstToUtc('2026-08-31', '10:00'),
     });
-    // 受付期間の終わりは 2026-09-30 10:00 なので 10/1 の枠はすべて期間外
     expect(far.every((s) => s.status === 'out_of_window')).toBe(true);
+    // 9/1 から見ると 30日後は 10/1 なので、時刻に関係なくすべて予約できる
+    const edge = buildDaySlots({
+      date: DATE,
+      rules,
+      closures: [],
+      busy: [],
+      now: jstToUtc('2026-09-01', '23:59'),
+    });
+    expect(edge.every((s) => s.status === 'available')).toBe(true);
   });
 
   it('同じ曜日の複数の営業時間を重複なくまとめる', () => {
@@ -99,6 +111,63 @@ describe('buildDaySlots', () => {
       now,
     });
     expect(slots).toHaveLength(8);
+  });
+});
+
+describe('予約受付期間（日付で判定）', () => {
+  it('今日 + 30日の日付まで受け付ける', () => {
+    const now = jstToUtc('2026-09-25', '23:30');
+    expect(lastBookableDate(now)).toBe('2026-10-25');
+    expect(isWithinBookingWindow('2026-10-25', now)).toBe(true);
+    expect(isWithinBookingWindow('2026-10-26', now)).toBe(false);
+  });
+
+  it('日付は Asia/Tokyo で判定する（UTC では前日でも JST の今日を基準にする）', () => {
+    // 2026-09-25 00:30 JST = 2026-09-24 15:30 UTC
+    expect(lastBookableDate(new Date('2026-09-24T15:30:00Z'))).toBe('2026-10-25');
+  });
+});
+
+describe('日をまたぐ予約', () => {
+  it('24:00 ちょうどに終わる予約は同じ日、0:00 を過ぎる予約は日またぎ', () => {
+    expect(isSingleJstDay({ start: jstToUtc(DATE, '23:00'), end: jstToUtc(DATE, '24:00') })).toBe(
+      true,
+    );
+    expect(
+      isSingleJstDay({ start: jstToUtc(DATE, '23:30'), end: jstToUtc('2026-10-02', '00:30') }),
+    ).toBe(false);
+    expect(
+      isSingleJstDay({
+        start: jstToUtc('2026-10-02', '00:00'),
+        end: jstToUtc('2026-10-02', '01:00'),
+      }),
+    ).toBe(true);
+  });
+
+  it('日をまたぐ期間は営業時間が続いていても予約できない', () => {
+    const allDay: AvailabilityRule[] = [
+      { weekday: 4, openTime: '00:00', closeTime: '24:00' },
+      { weekday: 5, openTime: '00:00', closeTime: '24:00' },
+    ];
+    const base = { rules: allDay, closures: [], busy: [], now, minSlots: 1 };
+    expect(
+      validateBookingPeriod(
+        { start: jstToUtc(DATE, '23:30'), end: jstToUtc('2026-10-02', '00:30') },
+        base,
+      ),
+    ).toEqual({ ok: false, error: 'crosses_day' });
+    // 日ごとに別々に予約すればよい
+    expect(
+      validateBookingPeriod({ start: jstToUtc(DATE, '23:30'), end: jstToUtc(DATE, '24:00') }, base),
+    ).toMatchObject({
+      ok: true,
+    });
+    expect(
+      validateBookingPeriod(
+        { start: jstToUtc('2026-10-02', '00:00'), end: jstToUtc('2026-10-02', '00:30') },
+        base,
+      ),
+    ).toMatchObject({ ok: true });
   });
 });
 

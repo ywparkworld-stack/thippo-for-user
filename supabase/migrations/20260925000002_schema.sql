@@ -59,6 +59,21 @@ as $$
      and public.is_slot_aligned(upper(p_period))
 $$;
 
+-- 期間が1つの暦日（Asia/Tokyo）に収まっているか。24:00 ちょうどに終わるのは同じ日とみなす。
+-- 日をまたぐ予約は受け付けない（日をまたいで利用したい場合は日ごとに別々に予約する）
+create or replace function public.is_single_jst_day(p_period tstzrange)
+returns boolean
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  select p_period is not null
+     and upper(p_period) > lower(p_period)
+     and upper(p_period) <= (((lower(p_period) at time zone 'Asia/Tokyo')::date + 1)::timestamp
+                             at time zone 'Asia/Tokyo')
+$$;
+
 create or replace function public.period_slots(p_period tstzrange)
 returns integer
 language sql
@@ -240,7 +255,7 @@ create table public.spaces (
   constraint spaces_min_slots_range check (
     min_slots between 1 and 48
   ),
-  -- 半額キャンセルでも貸出主の手取りがマイナスにならない料金だけを許可する
+  -- 30分 300 円以上で、半額キャンセルでも貸出主の手取りがマイナスにならない料金だけを許可する
   constraint spaces_price_allowed check (public.is_price_allowed(price_per_30min, min_slots))
 );
 create index spaces_host_idx on public.spaces (host_id);
@@ -301,7 +316,8 @@ create table public.cart_items (
   period tstzrange not null check (public.is_valid_booking_period(period)),
   slots integer generated always as (public.period_slots(period)) stored,
   created_at timestamptz not null default now(),
-  constraint cart_items_slots_range check (slots between 1 and 48)
+  constraint cart_items_slots_range check (slots between 1 and 48),
+  constraint cart_items_single_day check (public.is_single_jst_day(period))
 );
 create index cart_items_cart_idx on public.cart_items (cart_id);
 
@@ -385,6 +401,7 @@ create table public.bookings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint bookings_period_valid check (public.is_valid_booking_period(period)),
+  constraint bookings_single_day check (public.is_single_jst_day(period)),
   constraint bookings_slots_match check (slots = public.period_slots(period) and slots between 1 and 48),
   constraint bookings_total_match check (total = price_per_30min * slots),
   constraint bookings_cancel_consistency check (

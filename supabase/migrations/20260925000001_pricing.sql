@@ -14,6 +14,7 @@ returns table (
   stripe_fee_rate_basis_points integer,
   max_slots_per_booking integer,
   max_price_per_30min integer,
+  min_price_per_30min integer,
   booking_window_days integer,
   pending_order_ttl_minutes integer,
   full_refund_deadline_hours integer,
@@ -25,7 +26,7 @@ immutable
 parallel safe
 set search_path = ''
 as $$
-  select 30, 200, 100, 10, 360, 48, 1000000, 30, 15, 2, 24, 5
+  select 30, 200, 100, 10, 360, 48, 1000000, 300, 30, 15, 2, 24, 5
 $$;
 
 -- 予約1件分の手数料の内訳（packages/core の calcBookingFees と同じ）
@@ -67,8 +68,9 @@ end;
 $$;
 
 -- 料金が設定可能か（packages/core の isPriceAllowed と同じ）。
--- min_slots 以上のすべての枠数で、通常利用・全額返金・半額返金のいずれでも
--- 貸出主の手取りがマイナスにならないこと。
+--   * 30分あたり min_price_per_30min（300 円）以上、max_price_per_30min 以下
+--   * min_slots 以上のすべての枠数で、通常利用・全額返金・半額返金のいずれでも
+--     貸出主の手取りがマイナスにならないこと（安全確認）
 create or replace function public.is_price_allowed(p_price_per_30min integer, p_min_slots integer)
 returns boolean
 language plpgsql
@@ -88,7 +90,8 @@ begin
   if p_min_slots is null or p_min_slots < 1 or p_min_slots > c.max_slots_per_booking then
     return false;
   end if;
-  if p_price_per_30min is null or p_price_per_30min < 1 or p_price_per_30min > c.max_price_per_30min then
+  if p_price_per_30min is null or p_price_per_30min < c.min_price_per_30min
+     or p_price_per_30min > c.max_price_per_30min then
     return false;
   end if;
   for n in p_min_slots .. c.max_slots_per_booking loop
@@ -108,23 +111,14 @@ begin
 end;
 $$;
 
--- 30分あたりの料金の下限（packages/core の minPricePer30min と同じ）
-create or replace function public.min_price_per_30min(p_min_slots integer)
-returns integer
-language plpgsql
+-- 予約を受け付ける最後の利用日（Asia/Tokyo）。packages/core の lastBookableDate と同じ。
+-- 受付期間は日付で判定する: 利用日 <= 今日 + booking_window_days
+create or replace function public.last_bookable_date(p_now timestamptz)
+returns date
+language sql
 immutable
 parallel safe
 set search_path = ''
 as $$
-declare
-  p integer;
-  last_rejected integer := 0;
-begin
-  for p in 1 .. 2000 loop
-    if not public.is_price_allowed(p, p_min_slots) then
-      last_rejected := p;
-    end if;
-  end loop;
-  return last_rejected + 1;
-end;
+  select (p_now at time zone 'Asia/Tokyo')::date + (select booking_window_days from public.pricing_config())
 $$;

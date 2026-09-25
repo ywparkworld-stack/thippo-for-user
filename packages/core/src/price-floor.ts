@@ -25,18 +25,24 @@ export function isHostNetNonNegative(pricePer30min: number, slots: number): bool
 }
 
 /**
- * 料金が設定可能か。最低利用枠数 minSlots 以上のすべての枠数（最大 maxSlotsPerBooking）で
- * 貸出主の手取りがマイナスにならないこと。
+ * 料金が設定可能か。
+ *   - 30分あたり PRICING.minPricePer30min（300 円）以上、PRICING.maxPricePer30min 以下
+ *   - 最低利用枠数 minSlots 以上のすべての枠数（最大 maxSlotsPerBooking）で、
+ *     通常利用・全額返金・半額返金のいずれでも貸出主の手取りがマイナスにならない（安全確認）
  */
 export function isPriceAllowed(pricePer30min: number, minSlots: number): boolean {
   assertSlots(minSlots);
   if (
     !Number.isSafeInteger(pricePer30min) ||
-    pricePer30min < 1 ||
+    pricePer30min < PRICING.minPricePer30min ||
     pricePer30min > PRICING.maxPricePer30min
   ) {
     return false;
   }
+  return isHostNetNonNegativeFrom(pricePer30min, minSlots);
+}
+
+function isHostNetNonNegativeFrom(pricePer30min: number, minSlots: number): boolean {
   for (let n = minSlots; n <= PRICING.maxSlotsPerBooking; n++) {
     if (!isHostNetNonNegative(pricePer30min, n)) return false;
   }
@@ -44,7 +50,8 @@ export function isPriceAllowed(pricePer30min: number, minSlots: number): boolean
 }
 
 /**
- * 30分あたりの料金の下限。この値以上のどの料金でも isPriceAllowed が真になる最小値。
+ * 半額キャンセルでも貸出主の手取りがマイナスにならない理論上の下限。
+ * 運営が決めた下限（PRICING.minPricePer30min）がこれ以上であることの確認に使う。
  *
  * 半額キャンセル時の貸出主の手取りは
  *   ceil(total / 2) − 110 × hours − ceil(total × 3.6%)
@@ -54,12 +61,11 @@ export function isPriceAllowed(pricePer30min: number, minSlots: number): boolean
  * これが0以上になる料金（最も厳しい n = 1 でも 240 円）より大きい範囲には違反がないため、
  * 探索の上端は十分に余裕を見て 2,000 円にしている。
  */
-export function minPricePer30min(minSlots: number): number {
+export function safePriceFloorPer30min(minSlots: number): number {
   assertSlots(minSlots);
-  const searchUpper = 2_000;
   let lastRejected = 0;
-  for (let p = 1; p <= searchUpper; p++) {
-    if (!isPriceAllowed(p, minSlots)) lastRejected = p;
+  for (let p = 1; p <= 2_000; p++) {
+    if (!isHostNetNonNegativeFrom(p, minSlots)) lastRejected = p;
   }
   return lastRejected + 1;
 }

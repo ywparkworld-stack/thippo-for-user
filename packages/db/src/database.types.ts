@@ -950,10 +950,11 @@ export type Database = {
         Args: { p_min_slots: number; p_price_per_30min: number }
         Returns: boolean
       }
+      is_single_jst_day: { Args: { p_period: unknown }; Returns: boolean }
       is_slot_aligned: { Args: { p_ts: string }; Returns: boolean }
       is_space_public: { Args: { p_space_id: string }; Returns: boolean }
       is_valid_booking_period: { Args: { p_period: unknown }; Returns: boolean }
-      min_price_per_30min: { Args: { p_min_slots: number }; Returns: number }
+      last_bookable_date: { Args: { p_now: string }; Returns: string }
       owns_cart: { Args: { p_cart_id: string }; Returns: boolean }
       period_slots: { Args: { p_period: unknown }; Returns: number }
       pricing_config: {
@@ -967,6 +968,7 @@ export type Database = {
           half_cancel_platform_fee_per_hour_excl_tax: number
           max_price_per_30min: number
           max_slots_per_booking: number
+          min_price_per_30min: number
           pending_order_ttl_minutes: number
           platform_fee_per_hour_excl_tax: number
           slot_minutes: number
