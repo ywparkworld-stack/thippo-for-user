@@ -1,0 +1,30 @@
+{
+  "name": "thippo",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:guest": "pnpm --filter @thippo/guest dev",
+    "dev:host": "pnpm --filter @thippo/host dev",
+    "dev:admin": "pnpm --filter @thippo/admin dev",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --filter=!@thippo/db-tests test",
+    "test:db": "pnpm --filter @thippo/db-tests test",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@next/eslint-plugin-next": "^16.3.6",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.9.9",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}

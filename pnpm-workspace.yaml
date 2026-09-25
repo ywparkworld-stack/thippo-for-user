@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+  - supabase/tests
+
+# postgres-meta（型生成用）の依存。ビルドスクリプトは不要
+ignoredBuiltDependencies:
+  - '@sentry-internal/node-cpu-profiler'

@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+SPEC.md
+supabase/migrations/
+.next/
+node_modules/
+packages/db/src/database.types.ts

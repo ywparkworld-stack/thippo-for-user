@@ -1,0 +1,22 @@
+{
+  "name": "@thippo/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "gen:types": "supabase gen types typescript --local --schema public > src/database.types.ts",
+    "gen:types:db-url": "PG_META_GENERATE_TYPES=typescript PG_META_GENERATE_TYPES_INCLUDED_SCHEMAS=public PG_META_DB_URL=${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/thippo_test} node node_modules/@supabase/postgres-meta/dist/server/server.js > src/database.types.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.1"
+  },
+  "devDependencies": {
+    "@supabase/postgres-meta": "0.99.0",
+    "@types/node": "^22.0.0"
+  }
+}
