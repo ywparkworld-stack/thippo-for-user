@@ -33,7 +33,7 @@ export async function createSupabaseForRequest(app: AppName): Promise<AppSupabas
 
 /** 同じリクエスト内では1回だけ取得する */
 export const getViewer = cache(async (app: AppName): Promise<Viewer | null> => {
-  return loadViewer(await createSupabaseForRequest(app));
+  return loadViewer(await createSupabaseForRequest(app), app);
 });
 
 export type AllowedViewer = Viewer & { profile: NonNullable<Viewer['profile']> };

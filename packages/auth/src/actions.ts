@@ -75,7 +75,7 @@ export async function signIn(
     return { message: 'メールアドレスまたはパスワードが正しくありません。', email };
   }
 
-  const viewer = await loadViewer(supabase);
+  const viewer = await loadViewer(supabase, app);
   const decision = decideViewerAccess(app, viewer);
   if (decision.kind === 'login') {
     await supabase.auth.signOut({ scope: 'local' });

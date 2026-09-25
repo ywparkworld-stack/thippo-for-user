@@ -13,10 +13,23 @@ packages/
   core/    料金計算・返金判定・下限料金・枠の計算（純粋関数）と設定値
   ui/      共通 UI コンポーネント
   db/      Supabase の型定義（生成物）とクライアント
+  auth/    認証（3アプリ共通）: Supabase のセッション、proxy、ロール確認、レート制限、操作ログ
 supabase/
   migrations/  スキーマ・制約・RLS・DB 関数
+  templates/   認証メールのテンプレート
   tests/       DB のテスト（排他制約・RLS・core とのパリティ）
+e2e/           Playwright の E2E テスト（CI で supabase start に対して実行）
+docs/
+  admin-access.md  運営管理のアクセス制限・admin ロールの付与手順
 ```
+
+## 認証
+
+- 各アプリの `proxy.ts` でセッションを更新し、保護されたパスではロール・アカウントの状態・（運営は）2段階認証を確認する。
+  各ページ・Server Action でも `requireAccess` で同じ判定（`packages/core/src/access.ts`）をもう一度行う。
+- セッションの Cookie はアプリごとに名前を分け、`httpOnly` にしている（ブラウザの JavaScript からは読めない）。
+  ログイン・ログアウト・パスワード再設定・2段階認証はすべて Server Action で行う。
+- 運営管理は `ADMIN_ACCESS_MODE` が未設定だとすべて 403 になる（[docs/admin-access.md](./docs/admin-access.md)）。
 
 ## お金と権限の考え方
 

@@ -48,7 +48,7 @@ export function createAuthProxy(app: AppName, options: AuthProxyOptions) {
       },
     });
 
-    const viewer = await loadViewer(supabase);
+    const viewer = await loadViewer(supabase, app);
     const pathname = request.nextUrl.pathname;
     const isMfaPath = MFA_PATHS.includes(pathname);
 
