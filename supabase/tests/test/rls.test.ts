@@ -280,13 +280,13 @@ describe('運営用のデータ', () => {
   it('admin 以外は運営用のデータ・お金のデータに書き込めない', async () => {
     const writes = [
       `insert into public.audit_logs (action) values ('x.y')`,
-      `update public.app_settings set value = '1'`,
-      `update public.identity_documents set status = 'approved'`,
-      `update public.profiles set status = 'suspended'`,
-      `update public.hosts set status = 'suspended'`,
+      `update public.app_settings set value = '1' where key = 'contact_email'`,
+      `update public.identity_documents set status = 'approved' where id = '${docA}'`,
+      `update public.profiles set status = 'suspended' where id = '${guestA}'`,
+      `update public.hosts set status = 'suspended' where id = '${host1}'`,
       `insert into public.host_applications (company_name, contact_name, contact_email, address) values ('a','b','c@d','e')`,
       `insert into public.orders (guest_id, host_id, total, application_fee_amount, expires_at) values ('${guestA}', '${host1}', 0, 0, now())`,
-      `update public.bookings set status = 'confirmed'`,
+      `update public.bookings set status = 'confirmed' where id = '${bookingA1}'`,
       `insert into public.refunds (booking_id, policy, refund_amount, transfer_reversal_amount) values ('${bookingA1}', 'full', 1, 0)`,
       `insert into public.cancel_events (user_id, booking_id) values ('${guestA}', '${bookingA1}')`,
       `insert into public.stripe_events (event_id, type, payload) values ('evt', 't', '{}')`,
