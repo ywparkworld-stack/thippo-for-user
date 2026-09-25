@@ -26,7 +26,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],
+    files: ['apps/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}', 'packages/auth/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
     plugins: { '@next/next': nextPlugin, 'react-hooks': reactHooks },
     rules: {

@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - supabase/tests
+  - e2e
 
 # postgres-meta（型生成用）の依存。ビルドスクリプトは不要
 ignoredBuiltDependencies:

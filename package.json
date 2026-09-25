@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r --filter=!@thippo/db-tests test",
+    "test": "pnpm -r --filter=!@thippo/db-tests --filter=!@thippo/e2e test",
+    "test:e2e": "pnpm --filter @thippo/e2e test",
     "test:db": "pnpm --filter @thippo/db-tests test",
     "build": "pnpm -r build"
   },

@@ -23,15 +23,34 @@ file_size_limit = "10MiB"
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]
+additional_redirect_urls = ["http://localhost:3000/**", "http://localhost:3001/**", "http://localhost:3002/**"]
 jwt_expiry = 3600
 enable_signup = true
 minimum_password_length = 10
+
+# サーバー（Server Action）からログインするため、Supabase から見た接続元はアプリのサーバーになる。
+# ローカル・E2E では上限を緩める（本番の値はフェーズ 11 で staging の負荷を見て決める）
+[auth.rate_limit]
+sign_in_sign_ups = 1000
+token_verifications = 1000
+token_refresh = 1000
+email_sent = 100
 
 [auth.email]
 enable_signup = true
 enable_confirmations = true
 double_confirm_changes = true
+# パスワード変更時に再認証を求めない（パスワード再設定のリンク経由で変更するため）
+secure_password_change = false
+
+[auth.email.template.recovery]
+subject = "【thippo】パスワードの再設定"
+content_path = "./supabase/templates/recovery.html"
+
+# ローカルで送信されたメールは Mailpit（http://localhost:54324）で確認できる
+[inbucket]
+enabled = true
+port = 54324
 
 [auth.mfa]
 max_enrolled_factors = 10

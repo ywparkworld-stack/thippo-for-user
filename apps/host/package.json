@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@thippo/auth": "workspace:*",
     "@thippo/core": "workspace:*",
     "@thippo/db": "workspace:*",
     "@thippo/ui": "workspace:*",

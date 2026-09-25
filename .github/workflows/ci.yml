@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 concurrency:
@@ -52,3 +51,43 @@ jobs:
         run: |
           pnpm --filter @thippo/db gen:types:db-url
           git diff --exit-code packages/db/src/database.types.ts
+
+  e2e:
+    name: Supabase / E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Supabase を起動（マイグレーションとシードを適用）
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
+      - name: 環境変数を設定
+        run: |
+          eval "$(e2e/scripts/supabase-env.sh)"
+          env | grep -E '^(NEXT_PUBLIC_|SUPABASE_|E2E_DATABASE_URL|MAILPIT_URL|ADMIN_URL|ADMIN_ACCESS_MODE)' >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - name: DB テストを Supabase 本体に対して実行
+        env:
+          DB_TEST_TARGET: supabase
+        run: |
+          ADMIN_DATABASE_URL="$E2E_DATABASE_URL" \
+          API_DATABASE_URL="postgresql://authenticator:postgres@127.0.0.1:54322/postgres" \
+          pnpm test:db
+      - run: pnpm build
+      - run: pnpm --filter @thippo/e2e exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7

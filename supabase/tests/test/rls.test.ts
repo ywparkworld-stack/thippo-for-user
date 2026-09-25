@@ -70,9 +70,10 @@ beforeAll(async () => {
     [guestA, guestB],
   );
   [docA, docB] = docs.rows.map((r) => r.id) as [string, string];
-  await adminPool.query(`insert into public.audit_logs (actor_id, action) values ($1, 'test')`, [
-    admin,
-  ]);
+  await adminPool.query(
+    `insert into public.audit_logs (actor_id, action) values ($1, 'test.setup')`,
+    [admin],
+  );
 });
 
 const ids = (rows: { id: string }[]) => rows.map((r) => r.id).sort();
@@ -278,7 +279,7 @@ describe('運営用のデータ', () => {
 
   it('admin 以外は運営用のデータ・お金のデータに書き込めない', async () => {
     const writes = [
-      `insert into public.audit_logs (action) values ('x')`,
+      `insert into public.audit_logs (action) values ('x.y')`,
       `update public.app_settings set value = '1'`,
       `update public.identity_documents set status = 'approved'`,
       `update public.profiles set status = 'suspended'`,

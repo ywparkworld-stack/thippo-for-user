@@ -749,6 +749,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       refunds: {
         Row: {
           attempts: number
@@ -955,6 +973,15 @@ export type Database = {
       is_space_public: { Args: { p_space_id: string }; Returns: boolean }
       is_valid_booking_period: { Args: { p_period: unknown }; Returns: boolean }
       last_bookable_date: { Args: { p_now: string }; Returns: string }
+      log_admin_action: {
+        Args: {
+          p_action: string
+          p_payload?: Json
+          p_target_id?: string
+          p_target_table?: string
+        }
+        Returns: number
+      }
       owns_cart: { Args: { p_cart_id: string }; Returns: boolean }
       period_slots: { Args: { p_period: unknown }; Returns: number }
       pricing_config: {
@@ -975,11 +1002,30 @@ export type Database = {
           stripe_fee_rate_basis_points: number
         }[]
       }
+      purge_rate_limits: { Args: { p_older_than?: string }; Returns: number }
+      rate_limit_hit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number }
+        Returns: {
+          allowed: boolean
+          current_count: number
+          reset_at: string
+        }[]
+      }
       space_busy_periods: {
         Args: { p_from: string; p_space_id: string; p_to: string }
         Returns: {
           period: unknown
         }[]
+      }
+      write_audit_log: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_payload?: Json
+          p_target_id?: string
+          p_target_table?: string
+        }
+        Returns: number
       }
     }
     Enums: {
